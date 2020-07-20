@@ -1,0 +1,29 @@
+{
+  "name": "koas3",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/borsucok/koas3.git"
+  },
+  "keywords": [
+    "npm",
+    "node",
+    "koa",
+    "koajs",
+    "openapi3",
+    "oas3",
+    "koas",
+    "koas3"
+  ],
+  "author": "Michal Hricišín",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/borsucok/koas3/issues"
+  },
+  "homepage": "https://github.com/borsucok/koas3#readme"
+}
