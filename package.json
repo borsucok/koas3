@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm run lint && tsc",
+    "lint": "eslint ./src"
   },
   "repository": {
     "type": "git",
@@ -25,5 +27,13 @@
   "bugs": {
     "url": "https://github.com/borsucok/koas3/issues"
   },
-  "homepage": "https://github.com/borsucok/koas3#readme"
+  "homepage": "https://github.com/borsucok/koas3#readme",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^3.7.0",
+    "@typescript-eslint/parser": "^3.7.0",
+    "eslint": "^7.5.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-plugin-import": "^2.22.0",
+    "typescript": "^3.9.7"
+  }
 }
