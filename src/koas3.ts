@@ -6,15 +6,20 @@ import { Context } from "koa";
 import * as koaBody from "koa-body";
 import * as send from "koa-send";
 import OpenapiRequestCoercer from "openapi-request-coercer";
-import OpenAPIRequestValidator from "openapi-request-validator";
-import OpenAPISchemaValidator from "openapi-schema-validator";
+import OpenAPIRequestValidator, {
+  OpenAPIRequestValidatorArgs,
+} from "openapi-request-validator";
+import OpenAPISchemaValidator, {
+  OpenAPISchemaValidatorResult,
+} from "openapi-schema-validator";
 import OpenAPISecurityHandler, {
   SecurityHandlers,
 } from "openapi-security-handler";
-import { OpenAPIV2 } from "openapi-types";
+import { OpenAPIV3, OpenAPIV2, OpenAPI } from "openapi-types";
 import { join } from "path";
 import * as SwaggerUI from "swagger-ui-dist";
 import { isUndefined } from "util";
+import * as winston from "winston";
 
 interface IOperationControllerMapping {
   [controller: string]: IOperationMapping;
@@ -24,7 +29,7 @@ interface IOperationMapping {
   [operationId: string]: {
     path: string;
     method: Method;
-    operation: IOperation;
+    operation: OpenAPIV3.OperationObject;
   };
 }
 
@@ -47,13 +52,6 @@ const SUPPORTED_METHODS = [
   Method.delete,
 ];
 
-interface IOperation {
-  operationId: string;
-  parameters?: any[];
-  tags?: string[];
-  [x: string]: any;
-}
-
 export interface IKOAS3Options {
   controllersPath: string;
   mergeWithRouter?: Router;
@@ -63,13 +61,16 @@ export interface IKOAS3Options {
   securityHandlers?: SecurityHandlers;
   corsOptions?: cors.Options;
   koaBodyOptions?: koaBody.IKoaBodyOptions;
-  logger?: { info: (...args: any) => void; error: (...args: any) => void };
+  logger?: {
+    info: winston.LeveledLogMethod;
+    error: winston.LeveledLogMethod;
+  };
 }
 
 export class OASSchemaValidationError extends Error {
-  public errors: any[];
+  public errors: OpenAPISchemaValidatorResult["errors"];
 
-  constructor(message: string, errors: any[]) {
+  constructor(message: string, errors: OASSchemaValidationError["errors"]) {
     super(message);
     this.errors = errors;
   }
@@ -154,13 +155,13 @@ const mapToRouter = (
   router: Router,
   path: string,
   method: Method,
-  operation: IOperation,
-  controllerAction: (ctx: Context) => any | void,
+  operation: OpenAPIV3.OperationObject,
+  controllerAction: (ctx: Context) => Promise<any | void>,
   {
     openapi,
     securityHandlers,
   }: {
-    openapi?: any;
+    openapi?: OpenAPIV3.Document;
     securityHandlers?: SecurityHandlers;
   } = {}
 ) => {
@@ -168,22 +169,26 @@ const mapToRouter = (
   // zostavime pole middlewares
   const middlewares: Array<(ctx: Context, next?: () => void) => void> = [];
   // 1. validator vstupu + coercer + params parser, doplnac default hodnot a tak dalej
-  const validator = {
+  const validator: OpenAPIRequestValidatorArgs = {
     parameters: operation.parameters || [],
-    requestBody: operation.requestBody,
+    requestBody: operation.requestBody as OpenAPIV3.RequestBodyObject,
   };
   // if (validator.requestBody && method === 'put') {
   //   console.log(path, JSON.stringify(validator.requestBody, null, 2));
   // }
-  const coercerParams = [...(operation.parameters || [])];
+  const coercerParams: OpenAPI.Parameters = [...(operation.parameters || [])];
   // doplnime formData parametre - kvoli chybe v openapi-request-coercer, ktory zle implementuje OAS3
   if (
     operation.requestBody &&
-    operation.requestBody.content["multipart/form-data"]
+    (operation.requestBody as OpenAPIV3.RequestBodyObject).content[
+      "multipart/form-data"
+    ]
   ) {
     coercerParams.push(
       ...Object.entries(
-        operation.requestBody.content["multipart/form-data"].schema.properties
+        ((operation.requestBody as OpenAPIV3.RequestBodyObject).content[
+          "multipart/form-data"
+        ].schema as OpenAPIV3.NonArraySchemaObject).properties
       ).map(([paramName, paramSchema]) => {
         return {
           name: paramName,
@@ -224,15 +229,18 @@ const mapToRouter = (
   middlewares.push(async (ctx: Context, next) => {
     ctx.state = { ...ctx.state, openapi, path, pathToMap, operation };
     // doplnime response schemu
-    const responsesDefinition =
+    const responseDefinition =
       operation.responses[201] || operation.responses[200];
-    if (responsesDefinition) {
+    if (responseDefinition) {
       if (
-        responsesDefinition.content &&
-        responsesDefinition.content["application/json"]
+        (responseDefinition as OpenAPIV3.ResponseObject).content &&
+        (responseDefinition as OpenAPIV3.ResponseObject).content[
+          "application/json"
+        ]
       ) {
-        ctx.state.responseSchema =
-          responsesDefinition.content["application/json"].schema;
+        ctx.state.responseSchema = (responseDefinition as OpenAPIV3.ResponseObject).content[
+          "application/json"
+        ].schema;
       }
     }
     return next();
@@ -276,7 +284,7 @@ const mapToRouter = (
 };
 
 export default async (
-  specification: any,
+  specification: OpenAPIV3.Document,
   {
     controllersPath,
     mergeWithRouter,
@@ -312,7 +320,9 @@ export default async (
   }
 
   // resolvneme referencie
-  const openapi: any = await $RefParser.dereference(specification);
+  const openapi: OpenAPIV3.Document = (await $RefParser.dereference(
+    specification
+  )) as OpenAPIV3.Document;
 
   // pridame cors
   router.use(cors(corsOptions));
@@ -331,8 +341,8 @@ export default async (
     if (ctx.request.files) {
       await Promise.all(
         Object.entries(ctx.request.files).map(([fieldname, { path }]) => {
-          return new Promise((resolve, reject) => {
-            logger?.info("Cleaning uploaded file %s", path);
+          return new Promise((resolve) => {
+            logger?.info("Cleaning uploaded file %s / %s", fieldname, path);
             unlink(path, (err) => {
               if (err) {
                 logger?.error("Cleaning uploaded file error", err);
@@ -360,18 +370,21 @@ export default async (
       if (!pathDefinition[method]) {
         return;
       }
-      const operation = { ...pathDefinition[method] } as IOperation;
+      const operation = { ...pathDefinition[method] };
       // parametre operacie mergneme s parametrami path
       if (pathDefinition.parameters) {
         const mergedParameters = [
           ...pathDefinition.parameters.filter(
-            ({ name: pathParameterName, location: pathParameterLocation }) => {
+            ({
+              name: pathParameterName,
+              in: pathParameterLocation,
+            }: OpenAPIV3.ParameterObject) => {
               // ak je uz parameter definovany v path, nepridavame ho
               return !(operation.parameters || []).find(
                 ({
                   name: operationParameterName,
                   in: operationParameterLocation,
-                }) => {
+                }: OpenAPIV3.ParameterObject) => {
                   return (
                     operationParameterName === pathParameterName &&
                     operationParameterLocation === pathParameterLocation
@@ -438,7 +451,7 @@ export default async (
                 operationDefinition.path,
                 operationDefinition.method,
                 operationDefinition.operation,
-                (ctx) => {
+                async (ctx) => {
                   ctx.throw(
                     501,
                     `Invalid controller/operation specified: ${controllerName}/${operationId}`
@@ -463,7 +476,7 @@ export default async (
                 operationDefinition.path,
                 operationDefinition.method,
                 operationDefinition.operation,
-                (ctx) => {
+                async (ctx) => {
                   ctx.throw(
                     501,
                     `Invalid controller/operation specified: ${controllerName}/${operationId}`

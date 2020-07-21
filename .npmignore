@@ -3,3 +3,8 @@ coverage/
 node_modules/
 .idea/
 .vscode/
+.editorconfig
+.eslintignore
+.eslintrc.json
+tsconfig.json
+src/
