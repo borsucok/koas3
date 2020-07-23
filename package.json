@@ -56,6 +56,11 @@
     "openapi-schema-validator": "^7.0.0",
     "openapi-security-handler": "^7.0.0",
     "openapi-types": "^7.0.0",
-    "swagger-ui-dist": "^3.30.2"
+    "swagger-ui-dist": "^3.30.2",
+    "@koa/cors": "3.x",
+    "@koa/router": "9.x",
+    "koa": "2.x",
+    "koa-body": "4.x",
+    "koa-send": "5.x"
   }
 }
