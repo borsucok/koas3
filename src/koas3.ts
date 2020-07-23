@@ -465,7 +465,7 @@ export default async (
       } catch (error) {
         // If the module belonging to a specific tag (controller) isn't found: create a stub if the flag is set.
         if (error.code === "MODULE_NOT_FOUND") {
-          logger.info(`Cannot find controller ${controllerPath}`);
+          logger?.info(`Cannot find controller ${controllerPath}`);
           // // pre kazdu operaciu spravime 501
           Object.keys(operationMappings[controllerName]).forEach(
             (operationId) => {

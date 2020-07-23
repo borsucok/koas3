@@ -42,18 +42,20 @@
     "typescript": "^3.9.7",
     "winston": "^3.3.3"
   },
+  "peerDependencies": {
+    "@koa/cors": "3.x",
+    "@koa/router": "9.x",
+    "koa": "2.x",
+    "koa-body": "4.x",
+    "koa-send": "5.x"
+  },
   "dependencies": {
-    "@koa/cors": "^3.1.0",
-    "@koa/router": "^9.3.1",
     "json-schema-ref-parser": "^9.0.5",
-    "koa": "^2.13.0",
-    "koa-body": "^4.2.0",
-    "koa-send": "^5.0.1",
     "openapi-request-coercer": "^7.0.0",
     "openapi-request-validator": "^7.0.0",
     "openapi-schema-validator": "^7.0.0",
     "openapi-security-handler": "^7.0.0",
     "openapi-types": "^7.0.0",
-    "swagger-ui-dist": "^3.30.0"
+    "swagger-ui-dist": "^3.30.2"
   }
 }
