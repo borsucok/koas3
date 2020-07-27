@@ -1,4 +1,4 @@
-# OpanAPI v3 implementation for koa
+# OpenAPI v3 implementation for koa
 
 ## Usage example
 
