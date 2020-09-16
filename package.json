@@ -1,8 +1,9 @@
 {
   "name": "koas3",
-  "version": "0.1.0",
+  "version": "0.0.5",
   "description": "",
   "main": "lib/koas3.js",
+  "typings": "lib/koas3.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npm run lint && tsc",
