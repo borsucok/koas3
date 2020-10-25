@@ -1,19 +1,30 @@
 # OpenAPI v3 implementation for koa
 
+## Required peer dependencies
+
+- @koa/cors
+- @koa/router
+- js-yaml
+- koa
+- koa-body
+- koa-send
+- koas3
+
+`npm i @koa/cors @koa/router js-yaml koa koa-body koa-send koas3`
+
 ## Usage example
 
-```typescript
-import * as fs from 'fs';
-import * as jsyaml from 'js-yaml';
-import * as Koa from 'koa';
-import KOAS3, { IKOAS3Options } from 'koas3';
+```javascript
+const fs = require("fs");
+const jsyaml = require("js-yaml");
+const Koa = require("koa");
+const KOAS3 = require("koas3").default;
+const http = require("http");
+const URL = require("url");
 
-const createApp = async (
-  openapiPath: string,
-  options: IKOAS3Options
-) => {
+const createApp = async (openapiPath, options) => {
   // create openapi object
-  const openapiFile = fs.readFileSync('/path-to-openapi.yaml', 'utf8');
+  const openapiFile = fs.readFileSync(openapiPath, "utf8");
   const openapi = jsyaml.safeLoad(openapiFile);
 
   // create Koa app
@@ -31,28 +42,19 @@ const createApp = async (
       }
     } catch (err) {
       // example of error handling
-      if (err instanceof RESTError) {
-        ctx.status = err.statusCode;
-        ctx.body = {
-          statusCode: err.statusCode,
-          name: err.name,
-          description: err.description,
-          payload: err.payload,
-          userinfo: err.userinfo,
-        };
-      } else if (err.message === 'RequestValidationError') {
+      if (err.message === "RequestValidationError") {
         const { status, name, message, ...payload } = err;
-        ctx.status = typeof err.status === 'number' ? err.status : 500;
+        ctx.status = typeof err.status === "number" ? err.status : 500;
         ctx.body = {
           statusCode: ctx.status,
-          name: 'INVALID_SCHEMA',
+          name: "INVALID_SCHEMA",
           description: err.message,
           payload,
         };
       } else {
         // application
-        ctx.app.emit('error', err, ctx);
-        ctx.status = typeof err.status === 'number' ? err.status : 500;
+        ctx.app.emit("error", err, ctx);
+        ctx.status = typeof err.status === "number" ? err.status : 500;
         ctx.body = {
           statusCode: ctx.status,
           name: err.name,
@@ -71,12 +73,12 @@ const createApp = async (
   if (openapi.servers && openapi.servers.length) {
     const [serverDefinition] = openapi.servers;
     const url = URL.parse(serverDefinition.url);
-    let routePrefix = url.pathname.replace(/\/$/, '') + '/';
+    let routePrefix = url.pathname.replace(/\/$/, "") + "/";
     if (serverDefinition.variables) {
-      Object.keys(serverDefinition.variables).forEach(k => {
+      Object.keys(serverDefinition.variables).forEach((k) => {
         routePrefix = routePrefix.replace(
-          new RegExp(`{${k}}`, 'g'),
-          serverDefinition.variables[k].default,
+          new RegExp(`{${k}}`, "g"),
+          serverDefinition.variables[k].default
         );
       });
     }
@@ -88,41 +90,37 @@ const createApp = async (
   app.use(router.routes());
   app.use(router.allowedMethods());
 
-  app.on('error', err => {
+  app.on("error", (err) => {
     // this is any other error handler
-    console.error('AppError:', err);
+    console.error("AppError:", err);
   });
 
   return app;
-})();
+};
 
 // run the server
-createApp(
-  './path/to/openapi.yaml'),
-  {
-    controllersPath: './controllers',
-    securityHandlers,
-  }
-).then(async (app) => {
-  // make optional database connections
-
-  //mongo.connector(Object.assign({ connect: false }, config.get('mongodb')));
-  //await mongo.setup(dbSetup);
-  //redis.create(config.get('redis'));
-
-  http
-    .createServer(app.callback())
-    .listen({ port: 9000 }, () => {
-      console.log('API is listening on port 9000');
-    })
-    .on('error', (ee: any) => {
-      console.error(`Error starting server: ${ee}`);
-    });
-}).catch(async e => {
-  console.error('ApiError:', e);
-  // stop database connections
-
-  //redis.disconnect();
-  //await mongo.close();
+createApp("./openapi.yaml", {
+  controllersPath: "./controllers",
 })
+  .then(async (app) => {
+    // make optional database connections
+
+    //mongo.connector(Object.assign({ connect: false }, config.get('mongodb')));
+    //await mongo.setup(dbSetup);
+
+    http
+      .createServer(app.callback())
+      .listen({ port: 9000 }, () => {
+        console.log("API is listening on port 9000");
+      })
+      .on("error", (e) => {
+        console.error(`Error starting server: ${e}`);
+      });
+  })
+  .catch(async (e) => {
+    console.error("ApiError:", e);
+    // stop database connections
+
+    //await mongo.close();
+  });
 ```
