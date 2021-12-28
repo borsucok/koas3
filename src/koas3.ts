@@ -186,9 +186,11 @@ const mapToRouter = (
   ) {
     coercerParams.push(
       ...Object.entries(
-        ((operation.requestBody as OpenAPIV3.RequestBodyObject).content[
-          "multipart/form-data"
-        ].schema as OpenAPIV3.NonArraySchemaObject).properties
+        (
+          (operation.requestBody as OpenAPIV3.RequestBodyObject).content[
+            "multipart/form-data"
+          ].schema as OpenAPIV3.NonArraySchemaObject
+        ).properties
       ).map(([paramName, paramSchema]) => {
         return {
           name: paramName,
@@ -238,9 +240,9 @@ const mapToRouter = (
           "application/json"
         ]
       ) {
-        ctx.state.responseSchema = (responseDefinition as OpenAPIV3.ResponseObject).content[
-          "application/json"
-        ].schema;
+        ctx.state.responseSchema = (
+          responseDefinition as OpenAPIV3.ResponseObject
+        ).content["application/json"].schema;
       }
     }
     return next();
@@ -347,7 +349,7 @@ export default async (
               if (err) {
                 logger?.error("Cleaning uploaded file error", err);
               }
-              resolve();
+              resolve(true);
             });
           });
         })
@@ -530,7 +532,7 @@ export default async (
     .get(`${openapiDocsPath}/:path*`, docsMw);
   // redirect / -> /docs
   router.get("/", (ctx: Context) => {
-    return ctx.redirect(router.url("_docs", {}));
+    return ctx.redirect(router.url("_docs", {}) as string);
   });
 
   return router;
