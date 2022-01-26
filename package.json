@@ -1,6 +1,6 @@
 {
   "name": "koas3",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "",
   "main": "lib/koas3.js",
   "typings": "lib/koas3.d.ts",
