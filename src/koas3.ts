@@ -148,7 +148,7 @@ const SwaggerDocsHtml = ({ title, openapiUrl }) => {
 };
 
 const oasPath2RouterPath = (path: string): string => {
-  return path.replace(/{/g, ":").replace(/}/g, "");
+  return path.replace(":", "\\:").replace(/{/g, ":").replace(/}/g, "");
 };
 
 const mapToRouter = (
