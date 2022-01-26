@@ -1,25 +1,25 @@
-import * as cors from "@koa/cors";
-import * as Router from "@koa/router";
-import { unlink } from "fs";
-import * as $RefParser from "json-schema-ref-parser";
-import { Context } from "koa";
-import * as koaBody from "koa-body";
-import * as send from "koa-send";
-import OpenapiRequestCoercer from "openapi-request-coercer";
+import * as cors from '@koa/cors';
+import * as Router from '@koa/router';
+import { unlink } from 'fs';
+import * as $RefParser from 'json-schema-ref-parser';
+import { Context } from 'koa';
+import * as koaBody from 'koa-body';
+import * as send from 'koa-send';
+import OpenapiRequestCoercer from 'openapi-request-coercer';
 import OpenAPIRequestValidator, {
   OpenAPIRequestValidatorArgs,
-} from "openapi-request-validator";
+} from 'openapi-request-validator';
 import OpenAPISchemaValidator, {
   OpenAPISchemaValidatorResult,
-} from "openapi-schema-validator";
+} from 'openapi-schema-validator';
 import OpenAPISecurityHandler, {
   SecurityHandlers,
-} from "openapi-security-handler";
-import { OpenAPIV3, OpenAPIV2, OpenAPI } from "openapi-types";
-import { join } from "path";
-import * as SwaggerUI from "swagger-ui-dist";
-import { isUndefined } from "util";
-import * as winston from "winston";
+} from 'openapi-security-handler';
+import { OpenAPIV3, OpenAPIV2, OpenAPI } from 'openapi-types';
+import { join } from 'path';
+import * as SwaggerUI from 'swagger-ui-dist';
+import { isUndefined } from 'util';
+import * as winston from 'winston';
 
 interface IOperationControllerMapping {
   [controller: string]: IOperationMapping;
@@ -34,13 +34,13 @@ interface IOperationMapping {
 }
 
 const enum Method {
-  head = "head",
-  get = "get",
-  post = "post",
-  put = "put",
-  patch = "patch",
-  delete = "delete",
-  options = "options",
+  head = 'head',
+  get = 'get',
+  post = 'post',
+  put = 'put',
+  patch = 'patch',
+  delete = 'delete',
+  options = 'options',
 }
 
 const SUPPORTED_METHODS = [
@@ -68,9 +68,9 @@ export interface IKOAS3Options {
 }
 
 export class OASSchemaValidationError extends Error {
-  public errors: OpenAPISchemaValidatorResult["errors"];
+  public errors: OpenAPISchemaValidatorResult['errors'];
 
-  constructor(message: string, errors: OASSchemaValidationError["errors"]) {
+  constructor(message: string, errors: OASSchemaValidationError['errors']) {
     super(message);
     this.errors = errors;
   }
@@ -148,7 +148,7 @@ const SwaggerDocsHtml = ({ title, openapiUrl }) => {
 };
 
 const oasPath2RouterPath = (path: string): string => {
-  return path.replace(":", "\\:").replace(/{/g, ":").replace(/}/g, "");
+  return path.replace(':', '\\:').replace(/{/g, ':').replace(/}/g, '');
 };
 
 const mapToRouter = (
@@ -181,20 +181,20 @@ const mapToRouter = (
   if (
     operation.requestBody &&
     (operation.requestBody as OpenAPIV3.RequestBodyObject).content[
-      "multipart/form-data"
+      'multipart/form-data'
     ]
   ) {
     coercerParams.push(
       ...Object.entries(
         (
           (operation.requestBody as OpenAPIV3.RequestBodyObject).content[
-            "multipart/form-data"
+            'multipart/form-data'
           ].schema as OpenAPIV3.NonArraySchemaObject
         ).properties
       ).map(([paramName, paramSchema]) => {
         return {
           name: paramName,
-          in: "formData",
+          in: 'formData',
           schema: paramSchema,
         };
       })
@@ -218,7 +218,7 @@ const mapToRouter = (
     coercer.coerce(request);
     const validatorErrors = requestValidator.validateRequest(request);
     if (validatorErrors) {
-      ctx.throw(validatorErrors.status, "RequestValidationError", {
+      ctx.throw(validatorErrors.status, 'RequestValidationError', {
         errors: validatorErrors.errors,
         request,
         validator,
@@ -237,12 +237,12 @@ const mapToRouter = (
       if (
         (responseDefinition as OpenAPIV3.ResponseObject).content &&
         (responseDefinition as OpenAPIV3.ResponseObject).content[
-          "application/json"
+          'application/json'
         ]
       ) {
         ctx.state.responseSchema = (
           responseDefinition as OpenAPIV3.ResponseObject
-        ).content["application/json"].schema;
+        ).content['application/json'].schema;
       }
     }
     return next();
@@ -251,7 +251,7 @@ const mapToRouter = (
   // 3. security middleware
   if (operation.security) {
     const securityHandler = new OpenAPISecurityHandler({
-      loggingKey: "KOAS3Security",
+      loggingKey: 'KOAS3Security',
       // these are typically taken from the global api doc
       securityDefinitions: ((openapi.components || {}).securitySchemes ||
         {}) as OpenAPIV2.SecurityDefinitionsObject,
@@ -291,8 +291,8 @@ export default async (
     controllersPath,
     mergeWithRouter,
     validateSpecification = true,
-    openapiJsonPath = "/openapi.json",
-    openapiDocsPath = "/docs",
+    openapiJsonPath = '/openapi.json',
+    openapiDocsPath = '/docs',
     securityHandlers = {},
     corsOptions = {
       maxAge: 86400,
@@ -311,14 +311,14 @@ export default async (
     // zvalidujeme oas3 objekt
     if (oasvalidate.errors && oasvalidate.errors.length > 0) {
       throw new OASSchemaValidationError(
-        "OpenAPI schema validation failed",
+        'OpenAPI schema validation failed',
         oasvalidate.errors
       );
     }
   }
 
   if (!specification || !specification.paths) {
-    throw new Error("Specification is not valid");
+    throw new Error('Specification is not valid');
   }
 
   // resolvneme referencie
@@ -344,10 +344,10 @@ export default async (
       await Promise.all(
         Object.entries(ctx.request.files).map(([fieldname, { path }]) => {
           return new Promise((resolve) => {
-            logger?.info("Cleaning uploaded file %s / %s", fieldname, path);
+            logger?.info('Cleaning uploaded file %s / %s', fieldname, path);
             unlink(path, (err) => {
               if (err) {
-                logger?.error("Cleaning uploaded file error", err);
+                logger?.error('Cleaning uploaded file error', err);
               }
               resolve(true);
             });
@@ -367,7 +367,7 @@ export default async (
     const pathDefinition = paths[path];
     // defined controller for path
     const pathControllerName =
-      pathDefinition["x-controller-name"] || "index_ctrl";
+      pathDefinition['x-controller-name'] || 'index_ctrl';
     SUPPORTED_METHODS.forEach((method: Method) => {
       if (!pathDefinition[method]) {
         return;
@@ -400,7 +400,7 @@ export default async (
         operation.parameters = mergedParameters;
       }
       const finalControllerName =
-        operation["x-controller-name"] || pathControllerName;
+        operation['x-controller-name'] || pathControllerName;
       if (operationMappings[finalControllerName]) {
         operationMappings[finalControllerName][operation.operationId] = {
           path,
@@ -466,7 +466,7 @@ export default async (
         );
       } catch (error) {
         // If the module belonging to a specific tag (controller) isn't found: create a stub if the flag is set.
-        if (error.code === "MODULE_NOT_FOUND") {
+        if (error.code === 'MODULE_NOT_FOUND') {
           logger?.info(`Cannot find controller ${controllerPath}`);
           // // pre kazdu operaciu spravime 501
           Object.keys(operationMappings[controllerName]).forEach(
@@ -496,7 +496,7 @@ export default async (
   );
 
   // nastavime openapi.json route
-  router.get("_openapi", openapiJsonPath, (ctx) => {
+  router.get('_openapi', openapiJsonPath, (ctx) => {
     if (ctx.query.resolved) {
       ctx.body = openapi;
     } else {
@@ -506,15 +506,15 @@ export default async (
 
   // nastavime docs route
   const docsMw = async (ctx: Context) => {
-    if (!ctx.params.path && !ctx.path.endsWith("/")) {
+    if (!ctx.params.path && !ctx.path.endsWith('/')) {
       return ctx.redirect(`${ctx.path}/`);
     }
     try {
       if (!ctx.params.path) {
-        ctx.type = "text/html";
+        ctx.type = 'text/html';
         ctx.body = SwaggerDocsHtml({
           title: `${openapi.info.title} ${openapi.info.version}`,
-          openapiUrl: router.url("_openapi", {}),
+          openapiUrl: router.url('_openapi', {}),
         });
       } else {
         await send(ctx, ctx.params.path, {
@@ -528,11 +528,11 @@ export default async (
     }
   };
   router
-    .get("_docs", openapiDocsPath, docsMw)
+    .get('_docs', openapiDocsPath, docsMw)
     .get(`${openapiDocsPath}/:path*`, docsMw);
   // redirect / -> /docs
-  router.get("/", (ctx: Context) => {
-    return ctx.redirect(router.url("_docs", {}) as string);
+  router.get('/', (ctx: Context) => {
+    return ctx.redirect(router.url('_docs', {}) as string);
   });
 
   return router;
