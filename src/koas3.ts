@@ -297,7 +297,11 @@ export default async (
     corsOptions = {
       maxAge: 86400,
     },
-    koaBodyOptions = { multipart: true },
+    koaBodyOptions = {
+      multipart: true,
+      strict: false,
+      parsedMethods: ['POST', 'PUT', 'PATCH', 'DELETE'],
+    },
     logger = null,
   }: IKOAS3Options
 ): Promise<Router> => {
