@@ -299,7 +299,6 @@ export default async (
     },
     koaBodyOptions = {
       multipart: true,
-      strict: false,
       parsedMethods: ['POST', 'PUT', 'PATCH', 'DELETE'],
     },
     logger = null,
