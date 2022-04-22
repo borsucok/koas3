@@ -345,16 +345,21 @@ export default async (
     // cleanup files
     if (ctx.request.files) {
       await Promise.all(
-        Object.entries(ctx.request.files).map(([fieldname, { path }]) => {
-          return new Promise((resolve) => {
-            logger?.info('Cleaning uploaded file %s / %s', fieldname, path);
-            unlink(path, (err) => {
-              if (err) {
-                logger?.error('Cleaning uploaded file error', err);
-              }
-              resolve(true);
-            });
-          });
+        Object.entries(ctx.request.files).map(([fieldname, file]) => {
+          const uploadedFiles = Array.isArray(file) ? file : [file];
+          return Promise.all(
+            uploadedFiles.map(({ path }) => {
+              return new Promise((resolve) => {
+                logger?.info('Cleaning uploaded file %s / %s', fieldname, path);
+                unlink(path, (err) => {
+                  if (err) {
+                    logger?.error('Cleaning uploaded file error', err);
+                  }
+                  resolve(true);
+                });
+              });
+            })
+          );
         })
       );
     }
