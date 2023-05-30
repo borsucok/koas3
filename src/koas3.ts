@@ -3,7 +3,7 @@ import * as Router from '@koa/router';
 import { unlink } from 'fs';
 import * as $RefParser from 'json-schema-ref-parser';
 import { Context } from 'koa';
-import * as koaBody from 'koa-body';
+import koaBody, { HttpMethodEnum, KoaBodyMiddlewareOptions } from 'koa-body';
 import * as send from 'koa-send';
 import OpenapiRequestCoercer from 'openapi-request-coercer';
 import OpenAPIRequestValidator, {
@@ -18,7 +18,6 @@ import OpenAPISecurityHandler, {
 import { OpenAPIV3, OpenAPIV2, OpenAPI } from 'openapi-types';
 import { join } from 'path';
 import * as SwaggerUI from 'swagger-ui-dist';
-import { isUndefined } from 'util';
 import * as winston from 'winston';
 
 interface IOperationControllerMapping {
@@ -60,7 +59,7 @@ export interface IKOAS3Options {
   openapiDocsPath?: string;
   securityHandlers?: SecurityHandlers;
   corsOptions?: cors.Options;
-  koaBodyOptions?: koaBody.IKoaBodyOptions;
+  koaBodyOptions?: Partial<KoaBodyMiddlewareOptions>;
   logger?: {
     info: winston.LeveledLogMethod;
     error: winston.LeveledLogMethod;
@@ -156,7 +155,7 @@ const mapToRouter = (
   path: string,
   method: Method,
   operation: OpenAPIV3.OperationObject,
-  controllerAction: (ctx: Context) => Promise<any | void>,
+  controllerAction: (ctx: Context) => Promise<unknown | void>,
   {
     openapi,
     securityHandlers,
@@ -269,7 +268,7 @@ const mapToRouter = (
   // 4. finalna controller funkcia, ktora zavola controllerAction a ak vratil nejaky response, nastavi ho do ctx.body
   middlewares.push(async (ctx: Context, next) => {
     const result = await controllerAction(ctx);
-    if (!isUndefined(result)) {
+    if (result !== undefined) {
       ctx.body = result;
     }
     return next();
@@ -299,7 +298,12 @@ export default async (
     },
     koaBodyOptions = {
       multipart: true,
-      parsedMethods: ['POST', 'PUT', 'PATCH', 'DELETE'],
+      parsedMethods: [
+        HttpMethodEnum.POST,
+        HttpMethodEnum.PUT,
+        HttpMethodEnum.PATCH,
+        HttpMethodEnum.DELETE,
+      ],
     },
     logger = null,
   }: IKOAS3Options
@@ -348,10 +352,14 @@ export default async (
         Object.entries(ctx.request.files).map(([fieldname, file]) => {
           const uploadedFiles = Array.isArray(file) ? file : [file];
           return Promise.all(
-            uploadedFiles.map(({ path }) => {
+            uploadedFiles.map(({ filepath }) => {
               return new Promise((resolve) => {
-                logger?.info('Cleaning uploaded file %s / %s', fieldname, path);
-                unlink(path, (err) => {
+                logger?.info(
+                  'Cleaning uploaded file %s / %s',
+                  fieldname,
+                  filepath
+                );
+                unlink(filepath, (err) => {
                   if (err) {
                     logger?.error('Cleaning uploaded file error', err);
                   }
