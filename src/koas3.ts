@@ -140,6 +140,10 @@ const SwaggerDocsHtml = ({ title, openapiUrl }) => {
       // End Swagger UI call region
 
       window.ui = ui
+
+      ui.initOAuth({
+        usePkceWithAuthorizationCodeGrant: true
+      })
     }
   </script>
   </body>
