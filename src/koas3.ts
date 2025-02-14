@@ -16,7 +16,7 @@ import OpenAPISecurityHandler, {
   SecurityHandlers,
 } from 'openapi-security-handler';
 import { OpenAPIV3, OpenAPIV2, OpenAPI } from 'openapi-types';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import * as SwaggerUI from 'swagger-ui-dist';
 import * as winston from 'winston';
 
@@ -61,6 +61,7 @@ export interface IKOAS3Options {
   corsOptions?: cors.Options;
   koaBodyOptions?: Partial<KoaBodyMiddlewareOptions>;
   logger?: {
+    debug: winston.LeveledLogMethod;
     info: winston.LeveledLogMethod;
     error: winston.LeveledLogMethod;
   };
@@ -312,6 +313,7 @@ export default async (
     logger = null,
   }: IKOAS3Options
 ): Promise<Router> => {
+  logger?.debug('Initializing koas3', { module: 'koas3' });
   const router = mergeWithRouter || new Router();
 
   // validacia specifikacie
@@ -331,17 +333,21 @@ export default async (
   if (!specification || !specification.paths) {
     throw new Error('Specification is not valid');
   }
+  logger?.debug('Specification is valid', { module: 'koas3' });
 
   // resolvneme referencie
   const openapi: OpenAPIV3.Document = (await $RefParser.dereference(
     specification
   )) as OpenAPIV3.Document;
+  logger?.debug('Specification is dereferenced', { module: 'koas3' });
 
   // pridame cors
   router.use(cors(corsOptions));
+  logger?.debug('CORS middleware added', { module: 'koas3' });
 
   // pridame bodyparser
   router.use(koaBody(koaBodyOptions));
+  logger?.debug('KoaBody middleware added', { module: 'koas3' });
   // pridame cleanup na files ktore boli uploadnute
   router.use(async (ctx: Context, next) => {
     let error: Error = null;
@@ -379,6 +385,7 @@ export default async (
       throw error;
     }
   });
+  logger?.debug('KoaBody cleanup middleware added', { module: 'koas3' });
 
   const { paths } = openapi;
   const operationMappings: IOperationControllerMapping = {};
@@ -444,13 +451,18 @@ export default async (
       });
     }
   });
+  logger?.debug('Operation mappings created', { module: 'koas3' });
 
   // mame namapovane controller / operationId, ideme naimportovat moduly z controllerov
+  logger?.debug('Importing controllers', { module: 'koas3' });
   await Promise.all(
     Object.keys(operationMappings).map(async (controllerName: string) => {
-      const controllerPath = join(controllersPath, controllerName);
+      const controllerPath = resolve(join(controllersPath, controllerName));
       try {
         const controller = await import(controllerPath);
+        logger?.debug(`Controller ${controllerName} imported`, {
+          module: 'koas3',
+        });
         // po uspesnom importe namapujeme router na kazdu operaciu
         Object.keys(operationMappings[controllerName]).forEach(
           (operationId) => {
@@ -514,6 +526,7 @@ export default async (
       }
     })
   );
+  logger?.debug('Controllers mapped to router', { module: 'koas3' });
 
   // nastavime openapi.json route
   router.get('_openapi', openapiJsonPath, (ctx) => {
@@ -523,6 +536,7 @@ export default async (
       ctx.body = specification;
     }
   });
+  logger?.debug('OpenAPI.json route added', { module: 'koas3' });
 
   // nastavime docs route
   const docsMw = async (ctx: Context) => {
@@ -550,10 +564,12 @@ export default async (
   router
     .get('_docs', openapiDocsPath, docsMw)
     .get(`${openapiDocsPath}/:path*`, docsMw);
+  logger?.debug('Docs route added', { module: 'koas3' });
   // redirect / -> /docs
   router.get('/', (ctx: Context) => {
     return ctx.redirect(router.url('_docs', {}) as string);
   });
+  logger?.debug('Redirect route added', { module: 'koas3' });
 
   return router;
 };
